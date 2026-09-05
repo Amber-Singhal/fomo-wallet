@@ -1,10 +1,9 @@
-import React, { useState } from "react";
-import { Menu } from "lucide-react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import About from "./about";
 import PlayGame from "./playgame";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import CreateBetSheet from "./createbet";
 import { MoreVertical } from "lucide-react";
@@ -14,11 +13,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import TwitterShareButton from "./intent";
 
 export const Navbar = () => {
   const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
 
   const formatAddress = (addr) => {
     if (!addr) return "";
@@ -46,16 +43,9 @@ export const Navbar = () => {
             </Link>
             <CreateBetSheet />
             <ConnectButton.Custom>
-              {({
-                account,
-                chain,
-                openAccountModal,
-                openChainModal,
-                openConnectModal,
-                mounted,
-              }) => (
+              {({ openConnectModal }) => (
                 <Button
-                  onClick={isConnected ? openAccountModal : openConnectModal}
+                  onClick={openConnectModal}
                   className="border-black bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors duration-200"
                 >
                   {isConnected ? formatAddress(address) : "Connect Wallet"}
@@ -90,18 +80,9 @@ export const Navbar = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="focus:bg-gray-100">
                   <ConnectButton.Custom>
-                    {({
-                      account,
-                      chain,
-                      openAccountModal,
-                      openChainModal,
-                      openConnectModal,
-                      mounted,
-                    }) => (
+                    {({ openConnectModal }) => (
                       <Button
-                        onClick={
-                          isConnected ? openAccountModal : openConnectModal
-                        }
+                        onClick={openConnectModal}
                         variant="ghost"
                         className="w-full justify-start p-0 font-normal"
                       >

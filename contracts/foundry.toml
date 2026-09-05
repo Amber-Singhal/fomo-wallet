@@ -1,0 +1,14 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.26"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+
+[rpc_endpoints]
+bot_mainnet = "${BOT_MAINNET_RPC}"
+
+[etherscan]
+bot_mainnet = { key = "", url = "https://scan.botchain.ai/api" }

@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+contracts/.env
+
+# Foundry
+cache/
+out/
+
+# Misc
+.DS_Store
+*.log

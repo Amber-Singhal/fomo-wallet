@@ -7,12 +7,7 @@ import {
 } from "@rainbow-me/rainbowkit/wallets";
 import { useMemo } from "react";
 import { http, createConfig } from "wagmi";
-import {
-  base,
-  baseSepolia,
-  polygonAmoy,
-  mantleSepoliaTestnet,
-} from "wagmi/chains";
+import { botChain } from "@/utils/contracts";
 import { NEXT_PUBLIC_WC_PROJECT_ID } from "./config";
 
 export function useWagmiConfig() {
@@ -36,21 +31,18 @@ export function useWagmiConfig() {
         },
       ],
       {
-        appName: "onchainkit",
+        appName: "Fomo Wallet",
         projectId,
       }
     );
 
     const wagmiConfig = createConfig({
-      chains: [
-        mantleSepoliaTestnet,
-      ],
-      // turn off injected provider discovery
+      chains: [botChain],
       multiInjectedProviderDiscovery: false,
       connectors,
       ssr: true,
       transports: {
-        [mantleSepoliaTestnet.id]: http(),
+        [botChain.id]: http(),
       },
     });
 
