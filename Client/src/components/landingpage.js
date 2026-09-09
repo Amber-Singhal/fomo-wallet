@@ -1,9 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import About from "./about";
 import PlayGame from "./playgame";
-import { useAccount } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import CreateBetSheet from "./createbet";
 import { MoreVertical } from "lucide-react";
@@ -16,6 +15,7 @@ import {
 
 export const Navbar = () => {
   const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
 
   const formatAddress = (addr) => {
     if (!addr) return "";
@@ -42,16 +42,30 @@ export const Navbar = () => {
               <p className="font-semibold hover:underline">Leaderboard</p>
             </Link>
             <CreateBetSheet />
-            <ConnectButton.Custom>
-              {({ openConnectModal }) => (
+            {isConnected ? (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm bg-white border-2 border-black px-3 py-1 rounded-md">
+                  {formatAddress(address)}
+                </span>
                 <Button
-                  onClick={openConnectModal}
-                  className="border-black bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors duration-200"
+                  onClick={() => disconnect()}
+                  className="border-2 border-black bg-white text-black hover:bg-gray-100 font-semibold"
                 >
-                  {isConnected ? formatAddress(address) : "Connect Wallet"}
+                  Disconnect
                 </Button>
-              )}
-            </ConnectButton.Custom>
+              </div>
+            ) : (
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <Button
+                    onClick={openConnectModal}
+                    className="border-black bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors duration-200"
+                  >
+                    Connect Wallet
+                  </Button>
+                )}
+              </ConnectButton.Custom>
+            )}
           </div>
 
           {/* Mobile Dropdown */}
@@ -78,21 +92,35 @@ export const Navbar = () => {
                     Leaderboard
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="focus:bg-gray-100">
-                  <ConnectButton.Custom>
-                    {({ openConnectModal }) => (
-                      <Button
-                        onClick={openConnectModal}
-                        variant="ghost"
-                        className="w-full justify-start p-0 font-normal"
-                      >
-                        {isConnected
-                          ? formatAddress(address)
-                          : "Connect Wallet"}
-                      </Button>
-                    )}
-                  </ConnectButton.Custom>
-                </DropdownMenuItem>
+                {isConnected ? (
+                  <>
+                    <DropdownMenuItem className="focus:bg-gray-100" disabled>
+                      <span className="font-mono text-sm">
+                        {formatAddress(address)}
+                      </span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="focus:bg-gray-100 cursor-pointer"
+                      onSelect={() => disconnect()}
+                    >
+                      Disconnect
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem className="focus:bg-gray-100">
+                    <ConnectButton.Custom>
+                      {({ openConnectModal }) => (
+                        <Button
+                          onClick={openConnectModal}
+                          variant="ghost"
+                          className="w-full justify-start p-0 font-normal"
+                        >
+                          Connect Wallet
+                        </Button>
+                      )}
+                    </ConnectButton.Custom>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -140,7 +168,6 @@ const LandingPage = () => {
               alt="Hero image"
             />
           </div>
-          <About />
           <PlayGame />
         </div>
       </div>

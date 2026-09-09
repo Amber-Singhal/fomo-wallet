@@ -26,13 +26,9 @@ const CustomMarquee = ({ direction }) => {
           .map((winner, id) => (
             <div className="flex gap-20" key={id}>
               <div className="ml-20 flex gap-5 items-center">
-                <a
-                  href={`https://x.com/${winner.username.slice(1)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-4xl m800:text-2xl m500:text-xl font-bold text-black hover:underline">
+                <span className="text-4xl m800:text-2xl m500:text-xl font-bold text-black">
                   {winner.username}
-                </a>
+                </span>
                 <span className="text-4xl m800:text-2xl m500:text-xl text-green-600">
                   {winner.amount}
                 </span>

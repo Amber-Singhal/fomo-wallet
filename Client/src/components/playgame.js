@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   useAccount,
   useChainId,
+  usePublicClient,
   useReadContract,
   useSwitchChain,
   useWriteContract,
@@ -11,8 +12,192 @@ import {
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import Link from "next/link";
 import About from "./about";
 import { FOMO_WALLET_GAME_ADDRESS, FomoWalletGameABI, botChain } from "@/utils/contracts";
+
+const GameLobby = ({ gameAddress }) => {
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const [activeGames, setActiveGames] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!publicClient) return;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const counter = await publicClient.readContract({
+          address: gameAddress,
+          abi: FomoWalletGameABI,
+          functionName: "gameCounter",
+        });
+
+        const total = Number(counter);
+        const gameCalls = [];
+        for (let i = 1; i <= total; i++) {
+          gameCalls.push(
+            publicClient
+              .readContract({
+                address: gameAddress,
+                abi: FomoWalletGameABI,
+                functionName: "getGameState",
+                args: [BigInt(i)],
+              })
+              .then((data) => ({ gameId: i, data }))
+          );
+        }
+
+        const allGames = await Promise.all(gameCalls);
+        const nowSec = Math.floor(Date.now() / 1000);
+        const active = allGames.filter(
+          (g) => g.data[6] && !g.data[5] && Number(g.data[2]) > nowSec
+        );
+        setActiveGames(active.reverse());
+
+        if (address && isConnected) {
+          const historyEntries = [];
+          for (const g of allGames) {
+            if (!g.data[6]) continue;
+            const playerResult = await publicClient.readContract({
+              address: gameAddress,
+              abi: FomoWalletGameABI,
+              functionName: "getPlayerGuess",
+              args: [BigInt(g.gameId), address],
+            });
+            const hasGuessed = playerResult?.[1] === true;
+            if (hasGuessed) {
+              const hint = await publicClient.readContract({
+                address: gameAddress,
+                abi: FomoWalletGameABI,
+                functionName: "getPlayerHint",
+                args: [BigInt(g.gameId), address],
+              });
+              historyEntries.push({
+                gameId: g.gameId,
+                guess: playerResult[0],
+                hint,
+                finalized: g.data[5],
+                winner: g.data[3],
+                winningGuess: g.data[4],
+                deadline: Number(g.data[2]),
+              });
+            }
+          }
+          setHistory(historyEntries.reverse());
+        } else {
+          setHistory([]);
+        }
+      } catch (error) {
+        console.error("Lobby load error:", error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    const id = setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [publicClient, address, isConnected, gameAddress]);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white border-2 border-black rounded-lg p-4 sm:p-6">
+        <h3 className="text-lg font-bold mb-4">Join an Active Game</h3>
+        {loading ? (
+          <p className="text-sm text-gray-600">Loading games...</p>
+        ) : activeGames.length === 0 ? (
+          <p className="text-sm text-gray-600">
+            No active games right now. Create one to get started!
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {activeGames.map(({ gameId, data }) => (
+              <li
+                key={gameId}
+                className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-2 border-black rounded p-3 bg-blue-50"
+              >
+                <div>
+                  <p className="font-bold">Game #{gameId}</p>
+                  <p className="text-xs text-gray-600 sm:text-sm">
+                    Deadline: {new Date(Number(data[2]) * 1000).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-600 sm:text-sm">
+                    Guesses: {data[7].toString()}
+                  </p>
+                </div>
+                <Link href={`/${FOMO_WALLET_GAME_ADDRESS}/677/${gameId}`}>
+                  <Button className="border-2 border-black bg-pink-500 text-white hover:bg-pink-600 text-sm">
+                    Join Game
+                  </Button>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {isConnected && (
+        <div className="bg-white border-2 border-black rounded-lg p-4 sm:p-6">
+          <h3 className="text-lg font-bold mb-4">Your Plays</h3>
+          {loading ? (
+            <p className="text-sm text-gray-600">Loading history...</p>
+          ) : history.length === 0 ? (
+            <p className="text-sm text-gray-600">
+              You haven&apos;t submitted any guesses yet.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {history.map((h) => {
+                const expired = h.deadline * 1000 < Date.now();
+                const status = h.finalized
+                  ? "Finalized"
+                  : expired
+                  ? "Ended"
+                  : "Active";
+                const won =
+                  h.finalized &&
+                  h.winner.toLowerCase() === address?.toLowerCase();
+
+                return (
+                  <li
+                    key={h.gameId}
+                    className="border-2 border-black rounded p-3 bg-purple-50"
+                  >
+                    <div className="flex justify-between items-center">
+                      <p className="font-bold">Game #{h.gameId}</p>
+                      <span className="text-xs font-mono bg-white border border-black px-2 py-0.5 rounded">
+                        {status}
+                      </span>
+                    </div>
+                    <p className="text-sm">Your guess: {h.guess.toString()}</p>
+                    <p className="text-sm font-mono">Hint: {h.hint}</p>
+                    {h.finalized && (
+                      <div className="text-sm mt-1">
+                        Winner: {h.winner.slice(0, 6)}...{h.winner.slice(-4)} (
+                        {h.winningGuess.toString()})
+                        {won && (
+                          <span className="ml-2 font-bold text-green-600">
+                            You won!
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const PlayGame = ({ chainid, betid, contractAddress }) => {
   const gameAddress = contractAddress || FOMO_WALLET_GAME_ADDRESS;
@@ -152,9 +337,11 @@ const PlayGame = ({ chainid, betid, contractAddress }) => {
     return (
       <div className="pt-12">
         <div className="px-4 sm:px-16">
-          <div className="bg-purple-600 rounded-xl border-4 border-black shadow-custom p-8 text-center">
-            <h2 className="text-2xl font-bold text-white">No Game Selected</h2>
-            <p className="text-white mt-4 font-mono">Create or join a game to start playing.</p>
+          <div className="bg-purple-600 rounded-xl border-4 border-black shadow-custom p-4 sm:p-8">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">
+              Game Lobby
+            </h2>
+            <GameLobby gameAddress={gameAddress} />
           </div>
         </div>
         <About />
