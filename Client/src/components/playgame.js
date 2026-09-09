@@ -327,6 +327,10 @@ const PlayGame = ({ chainid, betid, contractAddress }) => {
               </ConnectButton.Custom>
             </div>
           </div>
+
+          <div className="mt-8">
+            <GameLobby gameAddress={gameAddress} />
+          </div>
         </div>
         <About />
       </div>
